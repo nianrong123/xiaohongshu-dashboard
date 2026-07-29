@@ -138,6 +138,100 @@
   }
   .btn-export:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
 
+  .btn-manage {
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--text-muted);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .btn-manage:hover { border-color: var(--text); }
+  .btn-manage.active { background: #ff6b6b; color: white; border-color: #ff6b6b; }
+
+  /* Delete button on cards */
+  .card-delete {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 2;
+    line-height: 1;
+  }
+  .card-delete.show { display: flex; }
+  .card-delete:hover { background: #ff6b6b; color: white; }
+
+  /* Password dialog overlay */
+  .pw-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .pw-overlay.show { display: flex; }
+  .pw-dialog {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: 28px;
+    width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    text-align: center;
+  }
+  .pw-dialog h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+  .pw-dialog p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .pw-dialog input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #ddd;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    outline: none;
+    text-align: center;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+  }
+  .pw-dialog input:focus { border-color: var(--text); }
+  .pw-dialog .pw-actions {
+    display: flex; gap: 10px;
+  }
+  .pw-dialog .pw-actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .pw-cancel { background: #f0f0f0; color: var(--text-muted); }
+  .pw-confirm { background: #ff6b6b; color: white; }
+  .pw-error { color: #ff6b6b; font-size: 12px; margin-top: -8px; margin-bottom: 8px; display: none; }
+
+  .manage-hint {
+    text-align: center;
+    padding: 8px 16px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .manage-hint.show { display: block; }
+
   /* Cards Grid */
   .cards-grid {
     display: grid;
@@ -400,12 +494,28 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         导出 CSV
       </button>
+      <button class="btn-manage" id="btnManage" onclick="toggleManage()">🔧 管理模式</button>
     </div>
 
+    <div class="manage-hint" id="manageHint">⚠️ 管理模式已开启 — 点卡片上的 × 可删除帖子（需密码验证）</div>
     <div class="cards-grid" id="cardsGrid"></div>
 
     <div class="pagination" id="pagination"></div>
   </main>
+</div>
+
+<!-- Password Dialog -->
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-dialog">
+    <h3>🔐 确认删除</h3>
+    <p>输入管理密码以删除此帖子</p>
+    <input type="password" id="pwInput" placeholder="请输入密码" autocomplete="off">
+    <div class="pw-error" id="pwError">密码错误，请重试</div>
+    <div class="pw-actions">
+      <button class="pw-cancel" onclick="closePwDialog()">取消</button>
+      <button class="pw-confirm" onclick="confirmDelete()">确认删除</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -1190,8 +1300,29 @@ const sampleData =   [
   ];
 
 // ============ State ============
+const DELETE_PASSWORD = 'delete123'; // ← 修改这里设置你的管理密码
 let currentPage = 1, itemsPerPage = 6, currentTopic = '全部', searchText = '';
+let manageMode = false;
+let pendingDeleteIdx = -1;
 const activeTopics = new Set();
+
+// ============ Deleted items (localStorage) ============
+function getDeletedUrls() {
+  try { return JSON.parse(localStorage.getItem('xhs_deleted_urls') || '[]'); }
+  catch(e) { return []; }
+}
+function addDeletedUrl(url) {
+  const list = getDeletedUrls();
+  if (!list.includes(url)) { list.push(url); localStorage.setItem('xhs_deleted_urls', JSON.stringify(list)); }
+}
+function clearDeletedUrls() {
+  localStorage.removeItem('xhs_deleted_urls');
+  manageMode = false;
+  document.getElementById('btnManage').classList.remove('active');
+  document.getElementById('manageHint').classList.remove('show');
+  updateDeleteButtons();
+  renderCards();
+}
 
 // ============ Render ============
 function getTopics() {
@@ -1211,6 +1342,11 @@ function setTopic(t) { currentTopic = t; currentPage = 1; renderCards(); renderT
 
 function filterData() {
   let data = sampleData;
+  // Exclude deleted items
+  const deletedUrls = getDeletedUrls();
+  if (deletedUrls.length > 0) {
+    data = data.filter(d => !deletedUrls.includes(d.url));
+  }
   if (currentTopic !== '全部') data = data.filter(d => d.topic === currentTopic);
   if (searchText) {
     const s = searchText.toLowerCase();
@@ -1234,6 +1370,8 @@ function renderCards() {
     const imgs = item.images.slice(0, 3).map((img) => '<img class="card-img" src="images/' + img + '" alt="" onerror="this.style.display=\'none\'">').join('');
 
     return `<div class="card ${cardColors[item.color]}" onclick="openModal(${start + i})">
+      <button class="card-delete" data-idx="${start + i}" onclick="event.stopPropagation(); openDeleteDialog(${start + i})" title="删除此帖">×</button>
+      <div class="card-top">
       <div class="card-top">
         <span class="card-tag">${item.topic}</span>
       </div>
@@ -1325,6 +1463,74 @@ function exportCSV() {
   showToast('CSV 导出成功');
 }
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+// ============ Management Mode ============
+function toggleManage() {
+  manageMode = !manageMode;
+  const btn = document.getElementById('btnManage');
+  const hint = document.getElementById('manageHint');
+  if (manageMode) {
+    btn.classList.add('active');
+    btn.textContent = '🔧 退出管理';
+    hint.classList.add('show');
+    const c = getDeletedUrls().length;
+    if (c > 0) hint.textContent = '⚠️ 管理模式已开启 — 点卡片上的 × 可删除帖子（需密码验证）| 已删除 ' + c + ' 篇，点此恢复全部';
+    hint.onclick = c > 0 ? () => { if (confirm('恢复所有已删除的帖子？')) clearDeletedUrls(); } : null;
+    hint.style.cursor = c > 0 ? 'pointer' : 'default';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '🔧 管理模式';
+    hint.classList.remove('show');
+  }
+  updateDeleteButtons();
+}
+
+function updateDeleteButtons() {
+  document.querySelectorAll('.card-delete').forEach(btn => {
+    btn.classList.toggle('show', manageMode);
+  });
+}
+
+function openDeleteDialog(idx) {
+  if (!manageMode) return;
+  pendingDeleteIdx = idx;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  document.getElementById('pwOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+
+function closePwDialog() {
+  document.getElementById('pwOverlay').classList.remove('show');
+  pendingDeleteIdx = -1;
+}
+
+function confirmDelete() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw !== DELETE_PASSWORD) {
+    document.getElementById('pwError').style.display = 'block';
+    return;
+  }
+  const data = filterData();
+  const item = data[pendingDeleteIdx];
+  if (!item) { closePwDialog(); return; }
+  addDeletedUrl(item.url);
+  document.getElementById('pwOverlay').classList.remove('show');
+  pendingDeleteIdx = -1;
+  renderCards();
+  const c = getDeletedUrls().length;
+  const hint = document.getElementById('manageHint');
+  hint.textContent = '⚠️ 管理模式已开启 — 点卡片上的 × 可删除帖子（需密码验证）| 已删除 ' + c + ' 篇，点此恢复全部';
+  hint.style.cursor = 'pointer';
+  hint.onclick = () => { if (confirm('恢复所有已删除的帖子？')) clearDeletedUrls(); };
+  showToast('已删除');
+}
+
+// Keyboard support for password dialog
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePwDialog();
+  if (e.key === 'Enter' && document.getElementById('pwOverlay').classList.contains('show')) confirmDelete();
+});
 
 // ============ Events ============
 document.getElementById('searchInput').addEventListener('input', e => { searchText = e.target.value; currentPage = 1; renderCards(); });
