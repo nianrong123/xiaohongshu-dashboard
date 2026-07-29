@@ -1372,7 +1372,6 @@ function renderCards() {
     return `<div class="card ${cardColors[item.color]}" onclick="openModal(${start + i})">
       <button class="card-delete" data-idx="${start + i}" onclick="event.stopPropagation(); openDeleteDialog(${start + i})" title="删除此帖">×</button>
       <div class="card-top">
-      <div class="card-top">
         <span class="card-tag">${item.topic}</span>
       </div>
       <div class="card-title">${item.title}</div>
