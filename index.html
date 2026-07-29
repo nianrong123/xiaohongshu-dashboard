@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内容采集看板</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mint-bg: #d5f5e3;
+    --mint-light: #eafaf1;
+    --sidebar-bg: rgba(255,255,255,0.75);
+    --card-bg: #ffffff;
+    --card-pink: #fce4ec;
+    --card-lavender: #ede7f6;
+    --card-peach: #fff3e0;
+    --card-mint: #e8f5e9;
+    --card-sky: #e3f2fd;
+    --text: #2c3e50;
+    --text-muted: #7f8c8d;
+    --accent: #1abc9c;
+    --radius-xl: 24px;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --shadow-soft: 0 8px 32px rgba(0,0,0,0.06);
+    --shadow-card: 0 4px 20px rgba(0,0,0,0.05);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #d5f5e3 0%, #c8f0e0 50%, #b8e6d4 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  /* Main Content */
+  .main {
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .main-header h1 {
+    font-size: 32px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .main-header p {
+    color: var(--text-muted); font-size: 14px;
+  }
+
+  /* Topic Pills */
+  .topic-bar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .topic-pill {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .topic-pill.active {
+    background: var(--text); color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .topic-pill:not(.active) {
+    background: rgba(255,255,255,0.6);
+    color: var(--text-muted);
+    backdrop-filter: blur(10px);
+  }
+  .topic-pill:not(.active):hover {
+    background: rgba(255,255,255,0.9);
+    transform: translateY(-1px);
+  }
+  .topic-icon { font-size: 15px; }
+
+  /* Search */
+  .search-wrap {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .search-box {
+    flex: 1;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s;
+  }
+  .search-box input:focus {
+    background: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .search-box input::placeholder { color: #bdc3c7; }
+  .search-box svg {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; color: #bdc3c7;
+  }
+  .filter-select {
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+  }
+  .btn-export {
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: var(--text);
+    color: white;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-export:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+
+  /* Cards Grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .card {
+    border-radius: var(--radius-xl);
+    padding: 20px;
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.5);
+  }
+  .card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: var(--shadow-soft);
+  }
+  .card.pink { background: var(--card-pink); }
+  .card.lavender { background: var(--card-lavender); }
+  .card.peach { background: var(--card-peach); }
+  .card.mint { background: var(--card-mint); }
+  .card.sky { background: var(--card-sky); }
+
+  .card-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .card-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(255,255,255,0.7);
+    color: var(--text-muted);
+  }
+  .card-rating {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text);
+  }
+  .card-rating svg { width: 14px; height: 14px; }
+
+  .card-title {
+    font-size: 15px; font-weight: 600;
+    line-height: 1.45;
+    margin-bottom: 12px;
+    color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+  .card-meta span { display: flex; align-items: center; gap: 4px; }
+  .card-meta svg { width: 13px; height: 13px; }
+
+  .card-imgs {
+    display: flex; gap: 8px;
+  }
+  .card-img {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.5);
+  }
+  .card-img-more {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+  }
+
+  .card-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.4);
+  }
+  .card-author {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500;
+  }
+  .card-author img {
+    width: 28px; height: 28px;
+    border-radius: 50%; object-fit: cover;
+  }
+  .card-actions {
+    display: flex; gap: 6px;
+  }
+  .card-actions button {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.6);
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .card-actions button:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+
+  /* Pagination */
+  .pagination {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 20px 0;
+  }
+  .page-btn {
+    min-width: 36px; height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.6);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .page-btn:hover { background: white; }
+  .page-btn.active { background: var(--text); color: white; }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white;
+    padding: 10px 24px; border-radius: 12px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; pointer-events: none;
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 9999;
+    box-shadow: var(--shadow-soft);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: var(--radius-xl);
+    max-width: 640px; width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: modalIn 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-header {
+    padding: 24px 24px 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .modal-header h2 {
+    font-size: 18px; font-weight: 600;
+    line-height: 1.4;
+    padding-right: 20px;
+  }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: #f5f5f5;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { background: #eee; }
+  .modal-body { padding: 16px 24px 24px; }
+  .modal-meta {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+  }
+  .modal-meta span {
+    padding: 4px 12px; border-radius: 999px;
+    background: var(--mint-light);
+    font-size: 12px; color: var(--text-muted);
+  }
+  .modal-summary {
+    font-size: 14px; line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .modal-images {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .modal-images img {
+    width: 100%; aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .modal-images img:hover { transform: scale(1.03); }
+
+  /* Fullscreen image */
+  .img-viewer {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 2000;
+  }
+  .img-viewer.show { display: flex; }
+  .img-viewer img {
+    max-width: 90vw; max-height: 90vh;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .img-viewer .close {
+    position: absolute; top: 20px; right: 20px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: none; color: white; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .app { padding: 12px; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .main-header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Main -->
+  <main class="main">
+    <div class="main-header">
+      <h1>内容采集看板</h1>
+      <p>追踪小红书爆款贴图内容 · 实时数据更新</p>
+    </div>
+
+    <div class="topic-bar" id="topicBar"></div>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="搜索标题或作者...">
+      </div>
+      <button class="btn-export" onclick="exportCSV()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        导出 CSV
+      </button>
+    </div>
+
+    <div class="cards-grid" id="cardsGrid"></div>
+
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-summary" id="modalSummary"></div>
+      <div class="modal-images" id="modalImages"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Viewer -->
+<div class="img-viewer" id="imgViewer" onclick="this.classList.remove('show')">
+  <button class="close">&times;</button>
+  <img id="viewerImg" src="" alt="">
+</div>
+
+<script>
+// ============ 模拟数据 ============
+const cardColors = ['pink','lavender','peach','mint','sky'];
+const sampleData =   [
+    {
+        "title": "🔥如果暑假只能做一件事｜狂刷这60部纪录片",
+        "author": "如斯在成长",
+        "time": "2026-07-04",
+        "url": "https://www.xiaohongshu.com/explore/6a49141f0000000021016e09",
+        "topic": "小学生b站",
+        "likes": 1400,
+        "comments": 23,
+        "shares": 513,
+        "imgs": 9,
+        "summary": "",
+        "images": [
+          "6a49141f0000000021016e09_0.jpg",
+          "6a49141f0000000021016e09_1.jpg",
+          "6a49141f0000000021016e09_2.jpg",
+          "6a49141f0000000021016e09_3.jpg",
+          "6a49141f0000000021016e09_4.jpg",
+          "6a49141f0000000021016e09_5.jpg",
+          "6a49141f0000000021016e09_6.jpg",
+          "6a49141f0000000021016e09_7.jpg",
+          "6a49141f0000000021016e09_8.jpg"
+        ],
+        "coverImage": "6a49141f0000000021016e09_0.jpg",
+        "color": 0
+      },
+      {
+        "title": "央视纪录片暑假首选",
+        "author": "亭竹",
+        "time": "2026-07-05",
+        "url": "https://www.xiaohongshu.com/explore/6a4a22b5000000001603f407",
+        "topic": "小学生b站",
+        "likes": 917,
+        "comments": 14,
+        "shares": 334,
+        "imgs": 6,
+        "summary": "",
+        "images": [
+          "6a4a22b5000000001603f407_0.jpg",
+          "6a4a22b5000000001603f407_1.jpg",
+          "6a4a22b5000000001603f407_2.jpg",
+          "6a4a22b5000000001603f407_3.jpg",
+          "6a4a22b5000000001603f407_4.jpg",
+          "6a4a22b5000000001603f407_5.jpg"
+        ],
+        "coverImage": "6a4a22b5000000001603f407_0.jpg",
+        "color": 1
+      },
+      {
+        "title": "我宣布，小破站是小学生的天堂(总结版)",
+        "author": "一森与我",
+        "time": "2025-04-23",
+        "url": "https://www.xiaohongshu.com/explore/6808ce6b000000001202e547",
+        "topic": "小学生b站",
+        "likes": 3096,
+        "comments": 16,
+        "shares": 649,
+        "imgs": 10,
+        "summary": "",
+        "images": [
+          "6808ce6b000000001202e547_0.jpg",
+          "6808ce6b000000001202e547_1.jpg",
+          "6808ce6b000000001202e547_2.jpg",
+          "6808ce6b000000001202e547_3.jpg",
+          "6808ce6b000000001202e547_4.jpg",
+          "6808ce6b000000001202e547_5.jpg",
+          "6808ce6b000000001202e547_6.jpg",
+          "6808ce6b000000001202e547_7.jpg",
+          "6808ce6b000000001202e547_8.jpg",
+          "6808ce6b000000001202e547_9.jpg"
+        ],
+        "coverImage": "6808ce6b000000001202e547_0.jpg",
+        "color": 2
+      },
+      {
+        "title": "停止说教｜8部纪录片让孩子自律成长",
+        "author": "护家小葱花",
+        "time": "2025-03-17",
+        "url": "https://www.xiaohongshu.com/explore/67d83028000000000603b75b",
+        "topic": "小学生b站",
+        "likes": 10117,
+        "comments": 152,
+        "shares": 2927,
+        "imgs": 9,
+        "summary": "",
+        "images": [
+          "67d83028000000000603b75b_0.jpg",
+          "67d83028000000000603b75b_1.jpg",
+          "67d83028000000000603b75b_2.jpg",
+          "67d83028000000000603b75b_3.jpg",
+          "67d83028000000000603b75b_4.jpg",
+          "67d83028000000000603b75b_5.jpg",
+          "67d83028000000000603b75b_6.jpg",
+          "67d83028000000000603b75b_7.jpg",
+          "67d83028000000000603b75b_8.jpg"
+        ],
+        "coverImage": "67d83028000000000603b75b_0.jpg",
+        "color": 3
+      },
+      {
+        "title": "寒假必看8部纪录片，让孩子自律成长",
+        "author": "童童妈育儿成长记",
+        "time": "2026-01-05",
+        "url": "https://www.xiaohongshu.com/explore/695b18ac000000001f00a368",
+        "topic": "小学生b站",
+        "likes": 2223,
+        "comments": 27,
+        "shares": 672,
+        "imgs": 10,
+        "summary": "",
+        "images": [
+          "695b18ac000000001f00a368_0.jpg",
+          "695b18ac000000001f00a368_1.jpg",
+          "695b18ac000000001f00a368_2.jpg",
+          "695b18ac000000001f00a368_3.jpg",
+          "695b18ac000000001f00a368_4.jpg",
+          "695b18ac000000001f00a368_5.jpg",
+          "695b18ac000000001f00a368_6.jpg",
+          "695b18ac000000001f00a368_7.jpg",
+          "695b18ac000000001f00a368_8.jpg",
+          "695b18ac000000001f00a368_9.jpg"
+        ],
+        "coverImage": "695b18ac000000001f00a368_0.jpg",
+        "color": 4
+      },
+      {
+        "title": "B站拼音学习，幼小衔接免费学💰太宝藏❗",
+        "author": "小小团麻麻",
+        "time": "2025-07-12",
+        "url": "https://www.xiaohongshu.com/explore/6871db700000000022031dda",
+        "topic": "小学生b站",
+        "likes": 6901,
+        "comments": 74,
+        "shares": 1800,
+        "imgs": 1,
+        "summary": "",
+        "images": [
+          "6871db700000000022031dda_0.jpg"
+        ],
+        "coverImage": "6871db700000000022031dda_0.jpg",
+        "color": 0
+      },
+      {
+        "title": "语数外三科想提分，看B站这几位老师就够了",
+        "author": "硅谷工程师憨爸",
+        "time": "2024-06-06",
+        "url": "https://www.xiaohongshu.com/explore/6661acfe000000000d00d612",
+        "topic": "小学生b站",
+        "likes": 38413,
+        "comments": 215,
+        "shares": 12020,
+        "imgs": 1,
+        "summary": "",
+        "images": [
+          "6661acfe000000000d00d612_0.jpg"
+        ],
+        "coverImage": "6661acfe000000000d00d612_0.jpg",
+        "color": 1
+      },
+      {
+        "title": "推荐:地理科普视频",
+        "author": "小姐姐的日常",
+        "time": "2025-08-24",
+        "url": "https://www.xiaohongshu.com/explore/68aafc3d000000001d034439",
+        "topic": "小学生b站",
+        "likes": 453,
+        "comments": 15,
+        "shares": 37,
+        "imgs": 1,
+        "summary": "",
+        "images": [
+          "68aafc3d000000001d034439_0.jpg"
+        ],
+        "coverImage": "68aafc3d000000001d034439_0.jpg",
+        "color": 2
+      },
+      {
+        "title": "值得N刷🆘这10部高分动画🎬暖心又解压🔥",
+        "author": "小鹿不乱撞",
+        "time": "2024-11-20",
+        "url": "https://www.xiaohongshu.com/explore/673db8970000000002018e0b",
+        "topic": "小学生b站",
+        "likes": 3351,
+        "comments": 16,
+        "shares": 119,
+        "imgs": 1,
+        "summary": "",
+        "images": [
+          "673db8970000000002018e0b_0.jpg"
+        ],
+        "coverImage": "673db8970000000002018e0b_0.jpg",
+        "color": 3
+      },
+      {
+        "title": "幼儿园妈妈们必知的b站资源",
+        "author": "草莓可可",
+        "time": "2025-07-24",
+        "url": "https://www.xiaohongshu.com/explore/68818b95000000002400f1cf",
+        "topic": "小学生b站",
+        "likes": 6233,
+        "comments": 20,
+        "shares": 1176,
+        "imgs": 1,
+        "summary": "",
+        "images": [
+          "68818b95000000002400f1cf_0.jpg"
+        ],
+        "coverImage": "68818b95000000002400f1cf_0.jpg",
+        "color": 4
+      },
+      {
+        "title": "他才一年级啊，别催他了，他真的已经很努力了",
+        "author": "一个小布丁(海南旅居ing）",
+        "time": "2025-03-26",
+        "url": "https://www.xiaohongshu.com/explore/67e3f9bf000000000d016760",
+        "topic": "小学生学习",
+        "likes": 7056,
+        "comments": 1644,
+        "shares": 2676,
+        "imgs": 1,
+        "summary": "早上出门前总在上演慢动作：\n小手揪着两根鞋带\n绕三圈就打成死结\n额头抵在膝盖上憋得通红\n这时候千万别说\"一年级该会了\"\n毕竟昨天他还在幼儿园\n玩滑梯都要老师抱下来\n\t\n翻开他的作业本：\n铅笔字像喝醉的蚂蚁\n橡皮擦破三个洞才写完\"口\"\n\"明\"的日字旁要加三根睫毛\n数学本边栏突然长出恐龙战队\n正在攻打\"13+7\"的城堡\n\t\n课间操总慢半拍\n不是故意捣乱\n校服领子卡着脖子\n运动鞋又有点挤脚\n摔倒了先抬头看有没有人笑\n其实眼泪早就在打转\n但必须等跑过来的瞬间才掉\n\t\n午饭时间最煎熬：\n西兰花必须藏在米饭下\n鸡腿要啃二十分钟\n汤碗里漂浮的葱花\n要一颗颗挑出来排成军队\n别怪他磨蹭\n光是用筷子夹起豌豆\n就花光了所有力气\n\t\n交朋友像小动物互嗅：\n突然推人一把是\"我们一起玩\"\n拽姑娘辫子其实是喜欢\n说\"最讨厌妈妈\"的晚上\n会抱着你的睡衣偷偷闻\n那些横冲直撞的拥抱\n都是还没学会的温柔\n\t\n他们正在经历最艰难的转型：\n从全天候陪玩到坐40分钟\n从随时哭鼻子到\"男生要坚强\"\n那些写反的字母\n算不清的加减法\n不是笨\n是小小身体里\n正在爆发式地重组整个世界\n\t\n下次看见他磨蹭时\n蹲到130公分的高度看看：\n纽扣眼小得像米粒\n走廊瓷砖缝有蚂蚁搬家\n单肩书包总往地上坠\n其实他已经在用最快的速度\n追赶这个庞然大物的世界\n\t\n给这些小男孩多留点时间吧\n春天的小笋子破土前\n总要在地下默默攒很久的劲\n你看他现在还够不到的厨房上柜\n但某个放学的傍晚\n会突然把书包往肩上一甩\n长成能帮你提菜的小小男子汉\n#家有小学生[话题]# #卷娃不如卷自己[话题]# #努力的小孩[话题]# #孩子的进步[话题]# #好好陪伴慢慢长大[话题]# #一年级男生[话题]# #小学生日常[话题]# #成长需要等待[话题]#\n@日常薯 @薯宝宝",
+        "images": [
+          "67e3f9bf000000000d016760_0.jpg"
+        ],
+        "coverImage": "67e3f9bf000000000d016760_0.jpg",
+        "color": 0
+      },
+      {
+        "title": "放弃期待：小学生是没有内驱力的",
+        "author": "根源认知",
+        "time": "2026-05-21",
+        "url": "https://www.xiaohongshu.com/explore/6a0e7777000000003701f5a3",
+        "topic": "小学生学习",
+        "likes": 2825,
+        "comments": 145,
+        "shares": 1448,
+        "imgs": 1,
+        "summary": "小学生内驱力培养的三大黄金法则\n\t\n1. 认清现实：小学生处于\"内驱力真空期\"\n\t\n• 兴趣消失：三年级后刷题考试取代趣味学习\n\t\n• 意义遥远：考大学/找工作等目标超出认知范围\n\t\n• 成就稀缺：仅少数学生能持续获得成就感\n\t\n• 关键结论：\n\t\n不要对小学生内驱力抱有过高期待，女生表现好更多源于服从性而非自驱力\n\t\n2. 破解之道：成就感再造系统\n\t\n▍偷换成功标准\n• 从\"班级排名\"转为\"自我超越\"：\n\t\n✓ 多背2个单词=胜利\n✓ 考试进步2分=胜利\n✓ 每天死磕1道数学题=胜利\n\t\n▍拆解困难任务\n• 课文背诵→分段完成\n\t\n• 单词记忆→每日2个\n\t\n• 数学提升→专攻1类题型\n\t\n▍核心要诀：\n让孩子体验\"我能做到\"的掌控感，建立\"小赢→再尝试\"的正向循环\n\t\n3. 降低学习痛苦指数\n\t\n必须戒除的三大行为：\n❌ 戒口：不停催促提醒\n❌ 戒手：随时纠错打断\n❌ 戒心：紧盯每个细节\n\t\n正确做法：\n• 作业完成后统一订正\n\t\n• 每天挖掘3个进步点：\n作业提前完成/字迹工整/少上厕所:\n启动彩虹屁模式\n\t\n4. 习惯养成：自动化学习流水线\n\t\n• 本质：解决\"不愿做但必须做\"的事\n\t\n• 特征：\n\t\n✅ 稳定运行\n✅ 低能耗\n✅ 无需意志力\n\t\n像刷牙洗脸一样完成每日学习任务\n\t\n终极心法：\n\t\n1. 不勤奋=学习不够轻松\n\t\n2. 不努力=缺乏正反馈\n\t\n3. 不自律=未建立习惯\n\t\n#青春期教育[话题]# #亲子教育[话题]# #自驱力成长[话题]# #孩子的压力[话题]# #减少孩子的压力[话题]# #降低对孩子的期待值[话题]# #父母成长[话题]# #内驱力[话题]# #孩子的成就感[话题]#  #家庭教育[话题]#",
+        "images": [
+          "6a0e7777000000003701f5a3_0.jpg"
+        ],
+        "coverImage": "6a0e7777000000003701f5a3_0.jpg",
+        "color": 1
+      },
+      {
+        "title": "发现三年级跟不上的孩子，爸妈都有一个通病",
+        "author": "想想向上生长",
+        "time": "2025-03-30",
+        "url": "https://www.xiaohongshu.com/explore/67e91934000000001d02613a",
+        "topic": "小学生学习",
+        "likes": 2690,
+        "comments": 345,
+        "shares": 481,
+        "imgs": 1,
+        "summary": "👩👧昨天邻居来串门，她家娃马上要升三升四了，突然发现孩子做作业越来越吃力，问我这学期怎么规划才能顺利过渡到高年级？\n⬆作为一个二胎老母亲，连夜整理了这份关键期指南，抓住分水岭不踩坑！\n·\n✅3个核心升级\n1️⃣自主学习：作业本旁边放\"问题收集本\"，遇到难题先自己思考5分钟再求助\n2️⃣时间管理：改用\"番茄钟工作法\"（25分钟学习+5分钟休息）\n3️⃣错题复盘：重点❗️比起疯狂刷题，更重要的是培养\"学习闭环\"：预习→听课→复习→检测\n·\n🔴语文\n1️⃣晨读：早上大声朗读20分钟，周一字词，周二古诗，周三课文，周四成语，周五作文素材，周末复习\n2️⃣古诗文：课内的《元日》《清明》等8首古诗，先断句再翻译，然后背诵默写\n3️⃣阅读：每天精读30分钟快乐读书吧，推荐《伊索寓言》《中国古代寓言》\n4️⃣作文：从看图写话过渡为长作文，每周一次命题作文小练笔，写完用deepseek精细化批改，圈出优点+改进点\n·\n🔴英语\n1️⃣好多家长急着让孩子背初中单词，结果基础语法漏洞百出😥\n👉把三下英语书每个单元的\"Let's talk\"背到滚瓜烂熟，比盲目超前有用十倍\n2️⃣推荐用\"影子跟读法\"：播放课本音频，孩子慢0.5秒跟读，每天10分钟\n·\n🔴数学\n1️⃣狠抓计算准确率\n这学期要接触两位数×两位数了，建议每天做5道\"超市计算题\n2️⃣应用题要会画线段图\n很多孩子卡在\"比多比少\"问题上，用不同颜色彩笔画出数量关系，抽象问题变具体\n3️⃣数学思维：三年级是小学的分水岭，数学难度增大，娃如果思维没有跟上，很容易没思路。这块牛娃建议尝试奥数，普娃可以参考浩浩，在周六日的时候数学思维训练\n浩浩跟的是杨易老师，每周2次线上打卡，1次是课本知识讲解和实战练习，搞定三年级知识点。1次是思维专项训练，锻炼数感、逻辑能力\n·\n👉每次听完儿子笔记都做了满满一大本。搭配每天10道浅奥练习，不用再额外刷题，娃也能收获满满。现在坚持了一年多，明显感觉他数学开窍了，都能当小老师，给同学们讲解了！\n·\n💡时间安排\n6:50 晨读\n17:30 计算特训+应用题精练\n18:00 写作业\n20:00 整理错题\n·\n每天留半小时让孩子自由安排，可以是看课外书也可以是发呆！#家有小学生[话题]# #孩子学习[话题]# #小孩教育很重要[话题]# #孩子的进步[话题]# #自主学习[话题]#",
+        "images": [
+          "67e91934000000001d02613a_0.jpg"
+        ],
+        "coverImage": "67e91934000000001d02613a_0.jpg",
+        "color": 2
+      },
+      {
+        "title": "我女儿把自己养得很好",
+        "author": "不想上班怎么了",
+        "time": "2025-04-29",
+        "url": "https://www.xiaohongshu.com/explore/68109bf4000000002301cb17",
+        "topic": "小学生学习",
+        "likes": 12790,
+        "comments": 509,
+        "shares": 956,
+        "imgs": 1,
+        "summary": "我们俩很多时候都是各干各的，“相互不用陪对方做事”是我们俩共同的约定。\n所以她习惯了看书写作业时，我在工作或打游戏，我忙着打扫卫生时，她在惬意地看书吃零食。\n\t\n我们从不要求对方同步，更不会去质问对方“凭什么”，所以虽然我看起来很“宠”孩子，但其实小也的动手能力很强，并总是能把自己的生活打理的很“精致”。\n\t\n有时我忙到一半抬头，看到她搬了把椅子到阳台上听着雨声看书，把橙汁倒进高脚杯小酌。\n馋了就自己进厨房煮个土豆，顺便还会问我饿不饿，要不要也来一个。\n有时她会开着小灯，和多比躲在帐篷里看书。\n\t\n9岁的她看过好多好多书，她喜欢模仿书里的人吃早餐时看报纸，吃面包时抹奶酪，课间时夹着两本书在走廊上闲逛，还会偷喝我的咖啡….\n我好笑地任她折腾，反正爱阅读的孩子总有她的精神世界，不用担心会学坏。\n\t\n图1-4 ：试图平衡看书和逗猫两件事，图4是她的“解决方案”\n图5-9：看书、听雨、插花，自得其乐的日常（花瓶是我的啤酒杯）\n图10-12：偶尔也会下厨给自己做一份土豆沙拉。\n图13-17 ：精致的女孩在教多比如何精致地享用猫粮，母爱像冻干一样满出来[偷笑R]…多比内心OS：我服了能不能给我换个大盆，夺影响我干饭呐[鄙视R]\n图18 ：多比——吃饱喝足，卸妆睡觉！\n\t\n#家有小学生[话题]# #富养女儿[话题]# #家居好物[话题]# #家居灵感[话题]# #家有萌宠[话题]# #养猫日常[话题]# #我和我的猫[话题]# #猫咪日常[话题]# #猫咪迷惑行为[话题]#",
+        "images": [
+          "68109bf4000000002301cb17_0.jpg"
+        ],
+        "coverImage": "68109bf4000000002301cb17_0.jpg",
+        "color": 3
+      },
+      {
+        "title": "孩子真正的自驱力，来自三个被满足的感觉",
+        "author": "小米妈妈育儿日记",
+        "time": "2026-04-09",
+        "url": "https://www.xiaohongshu.com/explore/69d72861000000001a030d0a",
+        "topic": "小学生学习",
+        "likes": 1354,
+        "comments": 160,
+        "shares": 857,
+        "imgs": 1,
+        "summary": "心理学研究证实，人主动向上的核心，是三大心理需求被满足：\n✅自主感：拥有掌控感，我的事我说了算\n不用事事替孩子安排，小到穿衣选择、作业顺序，大到周末安排，适当放手给选择权。\n让孩子自己做决定、承担结果，感受到对生活的掌控力，才会主动规划、主动负责，自发产生向上的动力。\n✅成就感：努力被看见，付出被认可\n不只盯着满分、奖状，孩子认真做题的专注、主动做事的担当、受挫后不放弃的坚持，都值得被肯定。\n让他明白“我的努力有意义，我本身就值得被爱”，而非为了讨好父母才努力，才会愿意主动尝试、突破自己。\n✅归属感：无论好坏，都被无条件接纳\n家是孩子永远的底气，让他清晰知道：不管优秀还是平凡、成功还是失败，父母的爱和支持永远都在。\n没有小心翼翼的讨好，没有犯错后的恐惧，内心满是安全感的孩子，才敢大胆探索、无惧挫折，心甘情愿为自己拼搏。\n[赞R]这三种感觉扎根心底，孩子不用催、不用盯，自然会主动向前。\n\t\n#家庭教育[话题]##育儿干货[话题]# #孩子自驱力[话题]# #亲子教育[话题]# #科学育儿[话题]# #父母必看[话题]# #内驱力培养[话题]# #如何唤醒孩子的自驱力[话题]# #培养孩子自驱力[话题]#",
+        "images": [
+          "69d72861000000001a030d0a_0.jpg"
+        ],
+        "coverImage": "69d72861000000001a030d0a_0.jpg",
+        "color": 4
+      },
+      {
+        "title": "超大童历经9个月终于入章！",
+        "author": "雷敌思",
+        "time": "2025-11-19",
+        "url": "https://www.xiaohongshu.com/explore/691ddc00000000001b020835",
+        "topic": "小学生学习",
+        "likes": 4663,
+        "comments": 997,
+        "shares": 707,
+        "imgs": 1,
+        "summary": "听完《火箭女孩》给娃听《怪兽学院》不咋感兴趣，于是直接掏出《驯龙大师》，竟然听得津津有味。没想到入章这么丝滑，更意外的是，我竟然也听懂了[笑哭R]，《火箭女孩》我只能听懂50%，感觉驯龙更简单？\n从三下到四上，历时正正好好9个月，对于起步晚、时间紧迫的10岁超大童，这一路真的很不容易！\n刚开始作为大童根本不习惯单纯靠听输入、觉得闹心[汗颜R]，再后来简单的动画片他觉得幼稚、感兴趣的又太难……当妈的信心被反复蹂躏！我甚至在听力上一度放弃，直到靠阅读raz词汇量上来以后、暑假大火猛攻《小猪佩奇》才见点光。开学以后时间特别紧，每天只有利用上下学路上的时间在车上听，一天也就半小时。\n我们没用听力机，暑假和周末用的是平板和旧手机，资源就是洗马拉雅，一分没花。喜马拉雅记录时长是108小时，实际上应该比这多一些。阅读词汇量对听力是有帮助的，而听完《小猪佩奇》刷raz也更顺畅了。\n回首来时路：\n最早看听《BIG MUZZY》，因为他也没看过什么[偷笑R]，一有时间就听看这个；\n学完razC级别给他先看后听《the big green forest》（强忍着听完[捂脸R]）、《bat and friends》（忍不了没看完也没听完[再见R]）；\n终于遇到感兴趣的《动物王国大冒险》，看1遍听1遍；\n进入崩溃期：《牛津树》不感兴趣、《巫师和猫》不感兴趣；没招了，那就听Raz[叹气R]；\n暑假开始看听《小猪佩奇》，很入迷，前四季看完听，后几季裸听，这才真正接受听力。\n后来他读《方块兔》很喜欢，所以听了1遍；接着听《西游记》，这个在暑假已经看完1遍。因为佩奇语速更快，为巩固成果所以方块兔、西游记我放了1.3倍速给他听，为了用西游记拉听力我还特意买了台词本，没时间看白买了[暗中观察R]，全部听完一遍他说可以再回味一遍，可是我听腻了，所以换了《火箭女孩》也是1.3倍速，直接裸听，有的章节听不太懂，他自己会找时间把听过的看一遍；听完这个他说可以再重听一遍，我又腻了[害羞R]，给他听《怪兽学院》听了2天不太感冒，最终进入《驯龙大师》。\n我们学英语起步很晚，一直阅读领先听力，但是看着大家的帖子慢慢摸索，终于取得阶段性胜利！在这里我要感谢红薯、感谢洗马拉雅，感谢b站，感谢乐于分享的姐妹们，感谢孩子和自己！[完啦R][完啦R][完啦R]\n祝学英语的孩子都尽早入章享受英语！\n#小学生爱好[话题]# #英语学习打卡[话题]# #英语学习原来可以这么有趣[话题]# #英语听力练习[话题]# #英语启蒙[话题]##小学生英语[话题]##小学生听力[话题]#",
+        "images": [
+          "691ddc00000000001b020835_0.jpg"
+        ],
+        "coverImage": "691ddc00000000001b020835_0.jpg",
+        "color": 0
+      },
+      {
+        "title": "暑假真正拉开孩子差距的，是家长的执行力",
+        "author": "两只神兽的妈",
+        "time": "2024-07-05",
+        "url": "https://www.xiaohongshu.com/explore/6687c6d2000000001c024628",
+        "topic": "小学生学习",
+        "likes": 1437,
+        "comments": 170,
+        "shares": 741,
+        "imgs": 1,
+        "summary": "暑假真正拉开孩子差距的，是家长的执行力\n暑假真正拉开孩子差距的，是家长的执行力\n寒暑假是拉开孩子们差距的关键时期，结局的好坏，取决于家长是否为孩子的暑期有一个明确的规划\n1、作息规律、养成习惯\n每天保持相同的起居时间，身体会逐渐适应并形成习惯。要让孩子成为一个有规划、有执行力的人，家长需要做出表率。\n比如规定早上八点起床开始学习，就不能今天九点起，明天八点起。假期也不能放松，要保持一致性，帮助孩子养成良好的习惯。稳定的作息能让孩子的精力更集中，学习效率更高。\n2、松弛感和规划相结合\n比如星期天可以让孩子自己规划，他想玩或者做其他事情，只要不违反原则，就支持他。这样不仅让孩子得到放松，也锻炼了他的自我安排能力。过度紧张的安排容易让孩子感到压力山大，适度的放松能提高他们的学习积极性，同时还能培养他们的独立性和自我管理能力。\n3、每日规划\n每天的安排可以分为三大部分：上午、下午和晚上。只需要为这三个时间段制定明确的主题任务，不需要细化到每时每分。\n一天学习四小时左右：上午集中学习；下午美文精读、阅读打卡、做题、运动、培养兴趣；晚上美文精读或复习单词、文言文，睡前听英语磨耳朵，目标明确。\n4、避免时间碎片化\n我很反对学一会儿玩一会儿，把时间弄得很零碎。这样看似在学习，但实际上效率很低，效果也不好。孩子需要连续的专注时间，才能真正提高学习效率。\n长时间的集中学习可以让孩子更深入地理解知识，培养他们的耐心和专注力。避免碎片化的时间安排，可以让孩子在学习中找到成就感，从而增强他们的自信心。\n5、晚上阅读和娱乐\n晚上可以安排安静的阅读或看电影、纪录片。每天阅读时间至少一小时，否则很难进入心流状态。早上没完成的学习任务，下午继续完成，不能玩，要有奖惩措施。通过阅读和观影，孩子可以开阔视野，丰富知识面，同时也是一种很好的放松方式。制定阅读和娱乐的规则，可以让孩子学会自律，保持学习和休息的平衡。\n6、总结反思\n每周末和孩子一起回顾本周的学习情况，看看哪些地方做得好，哪些地方需要改进。总结不仅可以让孩子认识到自己的进步和不足，还能帮助他们找到更有效的学习方法\n#学生[话题]# #暑假[话题]# #暑假作业[话题]# #暑假作业[话题]# #小学生[话题]# #宝妈[话题]# #暑假旅游[话题]# #好习惯养成[话题]# #学习日常[话题]# #好习惯[话题]#",
+        "images": [
+          "6687c6d2000000001c024628_0.jpg"
+        ],
+        "coverImage": "6687c6d2000000001c024628_0.jpg",
+        "color": 1
+      }
+  ];
+
+// ============ State ============
+let currentPage = 1, itemsPerPage = 6, currentTopic = '全部', searchText = '';
+const activeTopics = new Set();
+
+// ============ Render ============
+function getTopics() {
+  const set = new Set(sampleData.map(d => d.topic));
+  return ['全部', ...Array.from(set).sort()];
+}
+function renderTopics() {
+  const topics = getTopics();
+  const bar = document.getElementById('topicBar');
+  bar.innerHTML = topics.map(t => {
+    const isActive = currentTopic === t;
+    return `<button class="topic-pill ${isActive ? 'active' : ''}" onclick="setTopic('${t}')">${t}</button>`;
+  }).join('');
+}
+
+function setTopic(t) { currentTopic = t; currentPage = 1; renderCards(); renderTopics(); }
+
+function filterData() {
+  let data = sampleData;
+  if (currentTopic !== '全部') data = data.filter(d => d.topic === currentTopic);
+  if (searchText) {
+    const s = searchText.toLowerCase();
+    data = data.filter(d => d.title.toLowerCase().includes(s) || d.author.toLowerCase().includes(s));
+  }
+  return data;
+}
+
+function renderCards() {
+  const data = filterData();
+  const total = data.length;
+  const pages = Math.ceil(total / itemsPerPage) || 1;
+  if (currentPage > pages) currentPage = pages;
+  const start = (currentPage - 1) * itemsPerPage;
+  const pageData = data.slice(start, start + itemsPerPage);
+  const grid = document.getElementById('cardsGrid');
+
+  grid.innerHTML = pageData.map((item, i) => {
+    const imgCount = Math.min(3, item.imgs);
+    const more = item.imgs > 3 ? `<div class="card-img-more">+${item.imgs - 3}</div>` : '';
+    const imgs = item.images.slice(0, 3).map((img) => '<img class="card-img" src="images/' + img + '" alt="" onerror="this.style.display=\'none\'">').join('');
+
+    return `<div class="card ${cardColors[item.color]}" onclick="openModal(${start + i})">
+      <div class="card-top">
+        <span class="card-tag">${item.topic}</span>
+      </div>
+      <div class="card-title">${item.title}</div>
+      <div class="card-meta">
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${item.time}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg> ${formatNum(item.likes)}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg> ${formatNum(item.shares)}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> ${formatNum(item.comments)}</span>
+      </div>
+      <div class="card-imgs">${imgs}${more}</div>
+      <div class="card-footer">
+        <div class="card-author">
+          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=" + encodeURIComponent(item.author || "user") + "" alt="">
+          ${item.author}
+        </div>
+        <div class="card-actions">
+          <button onclick="event.stopPropagation(); copyRow(${start + i})">复制</button>
+          <button onclick="event.stopPropagation(); openModal(${start + i})">详情</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination(pages);
+}
+
+function renderPagination(pages) {
+  const p = document.getElementById('pagination');
+  if (pages <= 1) { p.innerHTML = ''; return; }
+  let btns = '';
+  btns += `<button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+    } else if (i === currentPage - 2 || i === currentPage + 2) {
+      btns += `<span style="padding:8px;color:#999">...</span>`;
+    }
+  }
+  btns += `<button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>&gt;</button>`;
+  p.innerHTML = btns;
+}
+
+function changePage(p) { currentPage = p; renderCards(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function formatNum(n) { return n >= 10000 ? (n/10000).toFixed(1) + '万' : n; }
+
+// ============ Modal ============
+function openModal(idx) {
+  const data = filterData();
+  const item = data[idx];
+  if (!item) return;
+  document.getElementById('modalTitle').textContent = item.title;
+  document.getElementById('modalMeta').innerHTML = `
+    <span>${item.topic}</span>
+    <span>点赞 ${formatNum(item.likes)}</span>
+    <span>分享 ${formatNum(item.shares)}</span>
+    <span>评论 ${formatNum(item.comments)}</span>
+    <span>${item.time}</span>
+    <span>${item.imgs} 张图片</span>
+  `;
+  document.getElementById('modalSummary').textContent = item.summary;
+  const imgs = item.images.slice(0, 9).map((img) => '<img src="images/' + img + '" onclick="viewImage(this.src)" onerror="this.style.display=\'none\'">').join('');
+  document.getElementById('modalImages').innerHTML = imgs;
+  document.getElementById('modalBackdrop').classList.add('show');
+}
+function closeModal(e) { if (!e || e.target === document.getElementById('modalBackdrop')) document.getElementById('modalBackdrop').classList.remove('show'); }
+function viewImage(src) { document.getElementById('viewerImg').src = src; document.getElementById('imgViewer').classList.add('show'); }
+
+// ============ Copy & Export ============
+function copyRow(idx) {
+  const data = filterData();
+  const item = data[idx];
+  if (!item) return;
+  const text = `标题：${item.title}\n正文：${item.summary}`;
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+function exportCSV() {
+  const data = filterData();
+  if (!data.length) { showToast('没有可导出的数据'); return; }
+  const headers = ['标题','账号名','话题','发布时间','文章链接','点赞','评论','分享','图片数','摘要'];
+  const rows = data.map(d => [d.title, d.author, d.topic, d.time, d.url, d.likes, d.comments, d.shares, d.imgs, d.summary].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = '\ufeff' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '采集数据_' + new Date().toLocaleDateString() + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV 导出成功');
+}
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+// ============ Events ============
+document.getElementById('searchInput').addEventListener('input', e => { searchText = e.target.value; currentPage = 1; renderCards(); });
+
+// ============ Init ============
+renderTopics();
+renderCards();
+</script>
+</body>
+</html>
