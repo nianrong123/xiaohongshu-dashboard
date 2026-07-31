@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小红书爆贴每日更新</title>
+<!-- Google Fonts removed: blocked by GFW in China. System font stack provides equivalent rendering. -->
+<style>
+  :root {
+    --mint-bg: #d5f5e3;
+    --mint-light: #eafaf1;
+    --sidebar-bg: rgba(255,255,255,0.75);
+    --card-bg: #ffffff;
+    --card-pink: #fce4ec;
+    --card-lavender: #ede7f6;
+    --card-peach: #fff3e0;
+    --card-mint: #e8f5e9;
+    --card-sky: #e3f2fd;
+    --text: #2c3e50;
+    --text-muted: #7f8c8d;
+    --accent: #1abc9c;
+    --radius-xl: 24px;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --shadow-soft: 0 8px 32px rgba(0,0,0,0.06);
+    --shadow-card: 0 4px 20px rgba(0,0,0,0.05);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #d5f5e3 0%, #c8f0e0 50%, #b8e6d4 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  /* Main Content */
+  .main {
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .main-header h1 {
+    font-size: 32px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .main-header p {
+    color: var(--text-muted); font-size: 14px;
+  }
+
+  /* Topic Pills */
+  .topic-bar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .topic-pill {
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .topic-pill.active {
+    background: var(--text); color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .topic-pill:not(.active) {
+    background: rgba(255,255,255,0.6);
+    color: var(--text-muted);
+    backdrop-filter: blur(10px);
+  }
+  .topic-pill:not(.active):hover {
+    background: rgba(255,255,255,0.9);
+    transform: translateY(-1px);
+  }
+  .topic-icon { font-size: 15px; }
+
+  /* Search */
+  .search-wrap {
+    display: flex; gap: 12px; align-items: center;
+  }
+  .search-box {
+    flex: 1;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s;
+  }
+  .search-box input:focus {
+    background: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .search-box input::placeholder { color: #bdc3c7; }
+  .search-box svg {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; color: #bdc3c7;
+  }
+  .filter-select {
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+  }
+  .btn-export {
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: var(--text);
+    color: white;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-export:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+
+  .btn-manage {
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--text-muted);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .btn-manage:hover { border-color: var(--text); }
+  .btn-manage.active { background: #ff6b6b; color: white; border-color: #ff6b6b; }
+
+  /* Delete button on cards */
+  .card-delete {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 2;
+    line-height: 1;
+  }
+  .card-delete.show { display: flex; }
+  .card-delete:hover { background: #ff6b6b; color: white; }
+
+  /* Password dialog overlay */
+  .pw-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .pw-overlay.show { display: flex; }
+  .pw-dialog {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: 28px;
+    width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    text-align: center;
+  }
+  .pw-dialog h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+  .pw-dialog p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .pw-dialog input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #ddd;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    outline: none;
+    text-align: center;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+  }
+  .pw-dialog input:focus { border-color: var(--text); }
+  .pw-dialog .pw-actions {
+    display: flex; gap: 10px;
+  }
+  .pw-dialog .pw-actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .pw-cancel { background: #f0f0f0; color: var(--text-muted); }
+  .pw-confirm { background: #ff6b6b; color: white; }
+  .pw-error { color: #ff6b6b; font-size: 12px; margin-top: -8px; margin-bottom: 8px; display: none; }
+
+  .manage-hint {
+    text-align: center;
+    padding: 8px 16px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    display: none;
+    margin-bottom: 8px;
+  }
+  .manage-hint.show { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .manage-hint .hint-left { display: flex; align-items: center; gap: 10px; }
+  .manage-hint .hint-right { display: flex; align-items: center; gap: 10px; }
+
+  .batch-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #ff6b6b; }
+  .btn-batch-delete {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    background: #ff6b6b;
+    color: white;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-batch-delete:hover { background: #e55555; transform: translateY(-1px); }
+  .btn-batch-delete:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-restore {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #856404;
+    background: transparent;
+    color: #856404;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-restore:hover { background: #856404; color: white; }
+
+  .btn-export-json {
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-export-json:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+
+  /* Card checkbox in manage mode */
+  .card-checkbox {
+    position: absolute;
+    top: 16px; left: 16px;
+    width: 20px; height: 20px;
+    cursor: pointer;
+    accent-color: #ff6b6b;
+    z-index: 3;
+    display: none;
+  }
+  .card-checkbox.show { display: block; }
+  .card.selectable { padding-left: 48px; }
+  .card.selected { outline: 2px solid #ff6b6b; outline-offset: -2px; }
+
+  /* Cards Grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .card {
+    border-radius: var(--radius-xl);
+    padding: 20px;
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.5);
+  }
+  .card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: var(--shadow-soft);
+  }
+  .card.pink { background: var(--card-pink); }
+  .card.lavender { background: var(--card-lavender); }
+  .card.peach { background: var(--card-peach); }
+  .card.mint { background: var(--card-mint); }
+  .card.sky { background: var(--card-sky); }
+
+  .card-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .card-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(255,255,255,0.7);
+    color: var(--text-muted);
+  }
+  .card-rating {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text);
+  }
+  .card-rating svg { width: 14px; height: 14px; }
+
+  .card-title {
+    font-size: 15px; font-weight: 600;
+    line-height: 1.45;
+    margin-bottom: 12px;
+    color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+  .card-meta span { display: flex; align-items: center; gap: 4px; }
+  .card-meta svg { width: 13px; height: 13px; }
+
+  .card-imgs {
+    display: flex; gap: 8px;
+  }
+  .card-img {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.5);
+  }
+  .card-img-more {
+    width: 48px; height: 48px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+  }
+
+  .card-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.4);
+  }
+  .card-author {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500;
+  }
+  .card-author img {
+    width: 28px; height: 28px;
+    border-radius: 50%; object-fit: cover;
+  }
+  .card-actions {
+    display: flex; gap: 6px;
+  }
+  .card-actions button {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.6);
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .card-actions button:hover {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+
+  /* Pagination */
+  .pagination {
+    display: flex; justify-content: center; gap: 8px;
+    padding: 20px 0;
+  }
+  .page-btn {
+    min-width: 36px; height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.6);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .page-btn:hover { background: white; }
+  .page-btn.active { background: var(--text); color: white; }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white;
+    padding: 10px 24px; border-radius: 12px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; pointer-events: none;
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 9999;
+    box-shadow: var(--shadow-soft);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: var(--radius-xl);
+    max-width: 640px; width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: modalIn 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.92) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-header {
+    padding: 24px 24px 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .modal-header h2 {
+    font-size: 18px; font-weight: 600;
+    line-height: 1.4;
+    padding-right: 20px;
+  }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: #f5f5f5;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .modal-close:hover { background: #eee; }
+  .modal-body { padding: 16px 24px 24px; }
+  .modal-meta {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+  }
+  .modal-meta span {
+    padding: 4px 12px; border-radius: 999px;
+    background: var(--mint-light);
+    font-size: 12px; color: var(--text-muted);
+  }
+  .modal-summary {
+    font-size: 14px; line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .modal-images {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .modal-images img {
+    width: 100%; aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .modal-images img:hover { transform: scale(1.03); }
+
+  /* Fullscreen image */
+  .img-viewer {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 2000;
+  }
+  .img-viewer.show { display: flex; }
+  .img-viewer img {
+    max-width: 90vw; max-height: 90vh;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .img-viewer .close {
+    position: absolute; top: 20px; right: 20px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: none; color: white; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .app { padding: 12px; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .main-header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#d5f5e3,#c8f0e0);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:'Inter',sans-serif;">
+  <div style="width:40px;height:40px;border:4px solid #ccc;border-top-color:#1abc9c;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  <span style="color:#2c3e50;font-size:16px;font-weight:500;">加载中...</span>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<div class="app">
+
+  <!-- Main -->
+  <main class="main">
+    <div class="main-header">
+      <h1>小红书爆贴每日更新</h1>
+      <p>追踪小红书爆款贴图内容 · 实时数据更新</p>
+    </div>
+
+    <div class="topic-bar" id="topicBar"></div>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="搜索标题或作者...">
+      </div>
+      <button class="btn-export" onclick="exportCSV()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        导出 CSV
+      </button>
+      <button class="btn-export-json" onclick="exportJSON()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        下载数据 JSON
+      </button>
+      <button class="btn-manage" id="btnManage" onclick="toggleManage()">🔧 管理模式</button>
+    </div>
+
+    <div class="manage-hint" id="manageHint">
+      <span class="hint-left">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;">
+          <input type="checkbox" class="batch-checkbox" id="selectAll" onchange="toggleSelectAll()" style="display:none;">
+          <span id="selectAllLabel">全选</span>
+        </label>
+        <button class="btn-batch-delete" id="btnBatchDel" onclick="batchDelete()" disabled>批量删除(0)</button>
+      </span>
+      <span class="hint-right">
+        <span id="hintText">管理模式已开启</span>
+        <button class="btn-restore" id="btnRestore" onclick="restoreDeleted()" style="display:none;">恢复已删除</button>
+      </span>
+    </div>
+    <div class="cards-grid" id="cardsGrid"></div>
+
+    <div class="pagination" id="pagination"></div>
+  </main>
+</div>
+
+<!-- Password Dialog -->
+<div class="pw-overlay" id="pwOverlay">
+  <div class="pw-dialog">
+    <h3>🔐 确认删除</h3>
+    <p>输入管理密码以删除此帖子</p>
+    <input type="password" id="pwInput" placeholder="请输入密码" autocomplete="off">
+    <div class="pw-error" id="pwError">密码错误，请重试</div>
+    <div class="pw-actions">
+      <button class="pw-cancel" onclick="closePwDialog()">取消</button>
+      <button class="pw-confirm" onclick="confirmDelete()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-summary" id="modalSummary"></div>
+      <div class="modal-images" id="modalImages"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Viewer -->
+<div class="img-viewer" id="imgViewer" onclick="this.classList.remove('show')">
+  <button class="close">&times;</button>
+  <img id="viewerImg" src="" alt="">
+</div>
+
+<script>
+// ============ 数据 ============
+const cardColors = ["pink","lavender","peach","mint","sky"];
+let sampleData = [];
+let dataLoaded = false;
+let dataError = false;
+
+async function loadData() {
+  sampleData = __DATA_PLACEHOLDER__;
+  dataLoaded = true;
+  document.getElementById("loadingOverlay").style.display = "none";
+  renderCards();
+  renderTopics();
+}
+// ============ State ============
+const DELETE_PASSWORD = 'ganyuqi'; // ← 修改这里设置你的管理密码
+let currentPage = 1, itemsPerPage = 6, currentTopic = '全部', searchText = '';
+let manageMode = false;
+let pendingDeleteIdx = -1;
+let selectedSet = new Set(); // 批量选中的 filtered index
+const activeTopics = new Set();
+
+// ============ Deleted items (localStorage) ============
+function getDeletedUrls() {
+  try { return JSON.parse(localStorage.getItem('xhs_deleted_urls') || '[]'); }
+  catch(e) { return []; }
+}
+function addDeletedUrl(url) {
+  const list = getDeletedUrls();
+  if (!list.includes(url)) { list.push(url); localStorage.setItem('xhs_deleted_urls', JSON.stringify(list)); }
+}
+function clearDeletedUrls() {
+  localStorage.removeItem('xhs_deleted_urls');
+  manageMode = false;
+  selectedSet.clear();
+  document.getElementById('btnManage').classList.remove('active');
+  document.getElementById('btnManage').textContent = '🔧 管理模式';
+  document.getElementById('manageHint').classList.remove('show');
+  document.getElementById('selectAll').style.display = 'none';
+  updateDeleteButtons();
+  renderCards();
+}
+
+// ============ Batch select ============
+function toggleSelectAll() {
+  const checked = document.getElementById('selectAll').checked;
+  const data = filterData();
+  const start = (currentPage - 1) * itemsPerPage;
+  const pageData = data.slice(start, start + itemsPerPage);
+  pageData.forEach((_, i) => {
+    const idx = start + i;
+    if (checked) selectedSet.add(idx);
+    else selectedSet.delete(idx);
+  });
+  // Update checkboxes on current page
+  document.querySelectorAll('.card-checkbox').forEach(cb => {
+    cb.checked = checked;
+  });
+  // Update card styles
+  document.querySelectorAll('.card').forEach(card => {
+    const idx = parseInt(card.dataset.idx);
+    if (checked && selectedSet.has(idx)) card.classList.add('selected');
+    else card.classList.remove('selected');
+  });
+  updateBatchBtn();
+}
+
+function toggleSelect(idx, checked) {
+  if (checked) selectedSet.add(idx);
+  else selectedSet.delete(idx);
+  // Update card style
+  const card = document.querySelector(`.card[data-idx="${idx}"]`);
+  if (card) card.classList.toggle('selected', checked);
+  // Update select all checkbox
+  updateSelectAllCheckbox();
+  updateBatchBtn();
+}
+
+function updateSelectAllCheckbox() {
+  const data = filterData();
+  const start = (currentPage - 1) * itemsPerPage;
+  const pageData = data.slice(start, start + itemsPerPage);
+  const allChecked = pageData.length > 0 && pageData.every((_, i) => selectedSet.has(start + i));
+  document.getElementById('selectAll').checked = allChecked;
+}
+
+function updateBatchBtn() {
+  const btn = document.getElementById('btnBatchDel');
+  const count = selectedSet.size;
+  btn.textContent = `批量删除(${count})`;
+  btn.disabled = count === 0;
+}
+
+function batchDelete() {
+  if (selectedSet.size === 0) return;
+  const data = filterData();
+  const urls = [];
+  selectedSet.forEach(idx => {
+    if (data[idx]) urls.push(data[idx].url);
+  });
+  if (urls.length === 0) return;
+  // Ask password
+  pendingDeleteIdx = -1; // signal batch mode
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  document.getElementById('pwOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+  // Store batch URLs temporarily
+  window._batchDeleteUrls = urls;
+}
+
+function restoreDeleted() {
+  if (confirm('恢复所有已删除的帖子？')) {
+    clearDeletedUrls();
+    showToast('已恢复全部帖子');
+  }
+}
+
+// ============ Render ============
+function getTopics() {
+  const set = new Set(sampleData.map(d => d.topic));
+  return ['全部', ...Array.from(set).sort()];
+}
+function renderTopics() {
+  const topics = getTopics();
+  const bar = document.getElementById('topicBar');
+  bar.innerHTML = topics.map(t => {
+    const isActive = currentTopic === t;
+    return `<button class="topic-pill ${isActive ? 'active' : ''}" onclick="setTopic('${t}')">${t}</button>`;
+  }).join('');
+}
+
+function setTopic(t) { currentTopic = t; currentPage = 1; selectedSet.clear(); renderCards(); renderTopics(); }
+
+function filterData() {
+  let data = sampleData;
+  // Exclude deleted items
+  const deletedUrls = getDeletedUrls();
+  if (deletedUrls.length > 0) {
+    data = data.filter(d => !deletedUrls.includes(d.url));
+  }
+  if (currentTopic !== '全部') data = data.filter(d => d.topic === currentTopic);
+  if (searchText) {
+    const s = searchText.toLowerCase();
+    data = data.filter(d => d.title.toLowerCase().includes(s) || d.author.toLowerCase().includes(s));
+  }
+  return data;
+}
+
+function renderCards() {
+  const data = filterData();
+  const total = data.length;
+  const pages = Math.ceil(total / itemsPerPage) || 1;
+  if (currentPage > pages) currentPage = pages;
+  const start = (currentPage - 1) * itemsPerPage;
+  const pageData = data.slice(start, start + itemsPerPage);
+  const grid = document.getElementById('cardsGrid');
+
+  grid.innerHTML = pageData.map((item, i) => {
+    const imgCount = Math.min(3, item.imgs);
+    const more = item.imgs > 3 ? `<div class="card-img-more">+${item.imgs - 3}</div>` : '';
+    const imgs = item.images.slice(0, 3).map((img) => '<img class="card-img" src="images/' + img + '" alt="" onerror="this.style.display=\'none\'">').join('');
+
+    return `<div class="card ${cardColors[item.color]}" onclick="openModal(${start + i})" data-idx="${start + i}">
+      <input type="checkbox" class="card-checkbox" data-idx="${start + i}" onclick="event.stopPropagation(); toggleSelect(${start + i}, this.checked)" title="选择此帖">
+      <button class="card-delete" data-idx="${start + i}" onclick="event.stopPropagation(); openDeleteDialog(${start + i})" title="删除此帖">×</button>
+      <div class="card-top">
+        <span class="card-tag">${item.topic}</span>
+      </div>
+      <div class="card-title">${item.title}</div>
+      <div class="card-meta">
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> ${item.time}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg> ${formatNum(item.likes)}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg> ${formatNum(item.shares)}</span>
+        <span><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> ${formatNum(item.comments)}</span>
+      </div>
+      <div class="card-imgs">${imgs}${more}</div>
+      <div class="card-footer">
+        <div class="card-author">
+          ${item.author}
+        </div>
+        <div class="card-actions">
+          <button onclick="event.stopPropagation(); copyRow(${start + i})">复制</button>
+          <button onclick="event.stopPropagation(); openModal(${start + i})">详情</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderPagination(pages);
+  updateDeleteButtons();
+  // Restore checkbox states
+  if (manageMode) {
+    updateSelectAllCheckbox();
+    updateBatchBtn();
+    document.querySelectorAll('.card-checkbox').forEach(cb => {
+      const idx = parseInt(cb.dataset.idx);
+      if (selectedSet.has(idx)) {
+        cb.checked = true;
+        cb.closest('.card')?.classList.add('selected');
+      }
+    });
+  }
+}
+
+function renderPagination(pages) {
+  const p = document.getElementById('pagination');
+  if (pages <= 1) { p.innerHTML = ''; return; }
+  let btns = '';
+  btns += `<button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+    } else if (i === currentPage - 2 || i === currentPage + 2) {
+      btns += `<span style="padding:8px;color:#999">...</span>`;
+    }
+  }
+  btns += `<button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>&gt;</button>`;
+  p.innerHTML = btns;
+}
+
+function changePage(p) { currentPage = p; document.getElementById('selectAll').checked = false; renderCards(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function formatNum(n) { return n >= 10000 ? (n/10000).toFixed(1) + '万' : n; }
+
+// ============ Modal ============
+function openModal(idx) {
+  const data = filterData();
+  const item = data[idx];
+  if (!item) return;
+  document.getElementById('modalTitle').textContent = item.title;
+  document.getElementById('modalMeta').innerHTML = `
+    <span>${item.topic}</span>
+    <span>点赞 ${formatNum(item.likes)}</span>
+    <span>分享 ${formatNum(item.shares)}</span>
+    <span>评论 ${formatNum(item.comments)}</span>
+    <span>${item.time}</span>
+    <span>${item.imgs} 张图片</span>
+  `;
+  document.getElementById('modalSummary').textContent = item.summary;
+  const imgs = item.images.slice(0, 9).map((img) => '<img src="images/' + img + '" onclick="viewImage(this.src)" onerror="this.style.display=\'none\'">').join('');
+  document.getElementById('modalImages').innerHTML = imgs;
+  document.getElementById('modalBackdrop').classList.add('show');
+}
+function closeModal(e) { if (!e || e.target === document.getElementById('modalBackdrop')) document.getElementById('modalBackdrop').classList.remove('show'); }
+function viewImage(src) { document.getElementById('viewerImg').src = src; document.getElementById('imgViewer').classList.add('show'); }
+
+// ============ Copy & Export ============
+function copyRow(idx) {
+  const data = filterData();
+  const item = data[idx];
+  if (!item) return;
+  const text = `标题：${item.title}\n正文：${item.summary}`;
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+function exportCSV() {
+  const data = filterData();
+  if (!data.length) { showToast('没有可导出的数据'); return; }
+  const headers = ['标题','账号名','话题','发布时间','文章链接','点赞','评论','分享','图片数','摘要'];
+  const rows = data.map(d => [d.title, d.author, d.topic, d.time, d.url, d.likes, d.comments, d.shares, d.imgs, d.summary].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = '\ufeff' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '采集数据_' + new Date().toLocaleDateString() + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV 导出成功');
+}
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+// ============ Export JSON (for sync with local files) ============
+function exportJSON() {
+  const data = filterData();
+  if (!data.length) { showToast('没有可导出的数据'); return; }
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'merged_data_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('JSON 数据已下载');
+}
+
+// ============ Management Mode ============
+function toggleManage() {
+  manageMode = !manageMode;
+  const btn = document.getElementById('btnManage');
+  const hint = document.getElementById('manageHint');
+  const selAll = document.getElementById('selectAll');
+  const hintText = document.getElementById('hintText');
+  const restoreBtn = document.getElementById('btnRestore');
+  if (manageMode) {
+    btn.classList.add('active');
+    btn.textContent = '🔧 退出管理';
+    hint.classList.add('show');
+    selAll.style.display = 'inline-block';
+    const c = getDeletedUrls().length;
+    hintText.textContent = '⚠️ 点 × 删单篇，勾选 + 批量删除可多篇删除';
+    if (c > 0) {
+      hintText.textContent = '⚠️ 已删除 ' + c + ' 篇 | 点 × 删单篇，勾选 + 批量删除可多篇删除';
+      restoreBtn.style.display = 'inline-block';
+    }
+    selectedSet.clear();
+    updateSelectAllCheckbox();
+    updateBatchBtn();
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '🔧 管理模式';
+    hint.classList.remove('show');
+    selAll.style.display = 'none';
+    restoreBtn.style.display = 'none';
+    selectedSet.clear();
+  }
+  updateDeleteButtons();
+  renderCards();
+}
+
+function updateDeleteButtons() {
+  document.querySelectorAll('.card-delete').forEach(btn => {
+    btn.classList.toggle('show', manageMode);
+  });
+  document.querySelectorAll('.card-checkbox').forEach(cb => {
+    cb.classList.toggle('show', manageMode);
+  });
+  document.querySelectorAll('.card').forEach(card => {
+    card.classList.toggle('selectable', manageMode);
+  });
+}
+
+function openDeleteDialog(idx) {
+  if (!manageMode) return;
+  pendingDeleteIdx = idx;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  document.getElementById('pwOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+
+function closePwDialog() {
+  document.getElementById('pwOverlay').classList.remove('show');
+  pendingDeleteIdx = -1;
+}
+
+function confirmDelete() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw !== DELETE_PASSWORD) {
+    document.getElementById('pwError').style.display = 'block';
+    return;
+  }
+  // Batch delete mode
+  if (window._batchDeleteUrls && window._batchDeleteUrls.length > 0) {
+    const urls = window._batchDeleteUrls;
+    urls.forEach(url => addDeletedUrl(url));
+    window._batchDeleteUrls = [];
+    document.getElementById('pwOverlay').classList.remove('show');
+    selectedSet.clear();
+    updateSelectAllCheckbox();
+    updateBatchBtn();
+    renderCards();
+    const c = getDeletedUrls().length;
+    const hintText = document.getElementById('hintText');
+    const restoreBtn = document.getElementById('btnRestore');
+    hintText.textContent = '⚠️ 已删除 ' + c + ' 篇 | 点 × 删单篇，勾选 + 批量删除可多篇删除';
+    restoreBtn.style.display = 'inline-block';
+    showToast('已批量删除 ' + urls.length + ' 篇');
+    return;
+  }
+  // Single delete mode
+  const data = filterData();
+  const item = data[pendingDeleteIdx];
+  if (!item) { closePwDialog(); return; }
+  addDeletedUrl(item.url);
+  document.getElementById('pwOverlay').classList.remove('show');
+  pendingDeleteIdx = -1;
+  selectedSet.delete(pendingDeleteIdx);
+  renderCards();
+  const c = getDeletedUrls().length;
+  const hintText = document.getElementById('hintText');
+  const restoreBtn = document.getElementById('btnRestore');
+  hintText.textContent = '⚠️ 已删除 ' + c + ' 篇 | 点 × 删单篇，勾选 + 批量删除可多篇删除';
+  restoreBtn.style.display = 'inline-block';
+  showToast('已删除');
+}
+
+// Keyboard support for password dialog
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePwDialog();
+  if (e.key === 'Enter' && document.getElementById('pwOverlay').classList.contains('show')) confirmDelete();
+});
+
+// ============ Events ============
+document.getElementById('searchInput').addEventListener('input', e => { searchText = e.target.value; currentPage = 1; selectedSet.clear(); renderCards(); });
+
+// ============ Init ============
+loadData();
+</script>
+</body>
+</html>
