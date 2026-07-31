@@ -632,7 +632,10 @@ let dataError = false;
 
 async function loadData() {
   try {
-    const resp = await fetch("data.json");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const resp = await fetch("data.json?v=" + Date.now(), { signal: controller.signal });
+    clearTimeout(timeout);
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     sampleData = await resp.json();
     dataLoaded = true;
