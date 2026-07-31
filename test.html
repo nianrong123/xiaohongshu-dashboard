@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>诊断页面</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; padding: 20px; background: #f5f5f5; }
+.log { background: #fff; border-radius: 8px; padding: 16px; margin: 8px 0; font-family: monospace; }
+.ok { border-left: 4px solid #27ae60; }
+.err { border-left: 4px solid #e74c3c; }
+.warn { border-left: 4px solid #f39c12; }
+</style>
+</head>
+<body>
+<h2>页面诊断</h2>
+<div id="logs"></div>
+
+<script>
+const logs = document.getElementById('logs');
+
+function addLog(msg, type) {
+  const div = document.createElement('div');
+  div.className = 'log ' + (type || 'ok');
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  logs.appendChild(div);
+}
+
+// Catch ALL errors
+window.addEventListener('error', e => {
+  addLog('JS错误: ' + e.message + ' (line: ' + e.lineno + ')', 'err');
+});
+
+// Start tests
+addLog('页面加载完成', 'ok');
+
+// Test 1: Check overlay
+setTimeout(() => {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    addLog('loadingOverlay 元素存在, display=' + overlay.style.display, 'ok');
+  } else {
+    addLog('loadingOverlay 元素不存在!', 'err');
+  }
+}, 100);
+
+// Test 2: Fetch data.json
+addLog('开始加载 data.json...', 'warn');
+const startTime = Date.now();
+
+fetch('data.json?v=' + Date.now())
+  .then(resp => {
+    addLog('HTTP 响应: ' + resp.status + ' (' + (Date.now() - startTime) + 'ms)', 'ok');
+    return resp.json();
+  })
+  .then(data => {
+    addLog('JSON 解析成功! 帖子数: ' + data.length + ' (' + (Date.now() - startTime) + 'ms)', 'ok');
+    // Show first post as preview
+    addLog('首篇: ' + data[0]?.title?.substring(0, 40) + ' | 赞:' + data[0]?.likes, 'ok');
+    
+    // Test image loading
+    if (data[0]?.images?.length > 0) {
+      const imgName = data[0].images[0];
+      const img = new Image();
+      img.onload = () => addLog('图片加载成功: ' + imgName + ' (' + (Date.now() - startTime) + 'ms)', 'ok');
+      img.onerror = () => addLog('图片加载失败: ' + imgName, 'err');
+      img.src = 'images/' + imgName;
+      addLog('尝试加载图片: images/' + imgName, 'warn');
+    }
+  })
+  .catch(e => {
+    addLog('加载失败: ' + e.message + ' (' + (Date.now() - startTime) + 'ms)', 'err');
+  });
+</script>
+</body>
+</html>
